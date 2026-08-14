@@ -24,12 +24,19 @@
   --ease:cubic-bezier(.4,0,.2,1);
 }
 *{margin:0;padding:0;box-sizing:border-box}
+html{
+  /* evita el "rebote" horizontal en iOS si algo se pasa por unos px */
+  overflow-x:hidden;
+}
 body{
   font-family:var(--font-body);
   font-weight:300;
   background:var(--cream);
   color:var(--text);
   min-height:100vh;
+  min-height:100dvh; /* alto real de viewport en mobile, sin la barra del navegador */
+  width:100%;
+  overflow-x:hidden;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -157,11 +164,15 @@ a{color:inherit}
 }
 .input-row input{
   flex:1;
+  min-width:0; /* si no, un input dentro de flex puede forzar overflow horizontal */
   padding:11px 14px;
   border-radius:10px;
   border:1.5px solid var(--border);
   font-family:var(--font-body);
-  font-size:14.5px;
+  /* 16px es el mínimo para que iOS Safari NO haga auto-zoom al enfocar el campo
+     (con menos de 16px, el navegador "acerca" la página entera y todo se ve
+     descuadrado hasta que se saca el foco) */
+  font-size:16px;
   color:var(--text);
 }
 .input-row input:focus{
@@ -268,9 +279,114 @@ a{color:inherit}
   text-decoration:none;
   transition:opacity .2s var(--ease), transform .2s var(--ease);
 }
+/* ---- formulario previo (nombre + mail) y paso de teléfono final ---- */
+.lead-form{
+  width:100%;
+  max-width:560px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:0 12px 40px rgba(26,24,20,.08);
+  padding:26px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.lead-form label{
+  font-size:13px;
+  color:var(--text-dim);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.lead-form input{
+  padding:11px 14px;
+  border-radius:10px;
+  border:1.5px solid var(--border);
+  font-family:var(--font-body);
+  font-size:16px; /* ver nota arriba sobre auto-zoom de iOS */
+  color:var(--text);
+}
+.lead-form input:focus{
+  outline:none;
+  border-color:var(--gold-soft);
+  box-shadow:0 0 0 3px rgba(154,123,61,.14);
+}
+.lead-form .hint{font-size:12px;color:var(--text-dim)}
+.lead-form button{
+  margin-top:4px;
+  padding:13px 20px;
+  border:none;
+  border-radius:10px;
+  background:var(--gold-deep);
+  color:#fff;
+  font-family:var(--font-body);
+  font-weight:600;
+  font-size:14.5px;
+  cursor:pointer;
+  transition:opacity .2s var(--ease);
+}
+.lead-form button:disabled{opacity:.5;cursor:default}
+.lead-form button:not(:disabled):hover{opacity:.88}
+.lead-form .field-error{font-size:12px;color:#9C3B3B;display:none}
+
+.phone-step{
+  width:100%;
+  max-width:560px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  text-align:center;
+}
+.phone-step p{font-size:14px;color:var(--text-dim)}
+.phone-step .phone-row{display:flex;gap:10px}
+.phone-step input{
+  flex:1;
+  padding:11px 14px;
+  border-radius:10px;
+  border:1.5px solid var(--border);
+  font-family:var(--font-body);
+  font-size:16px;
+  color:var(--text);
+}
+.phone-step .actions{display:flex;gap:10px;justify-content:center;margin-top:4px}
+.phone-step button{
+  padding:12px 22px;
+  border-radius:10px;
+  font-family:var(--font-body);
+  font-weight:600;
+  font-size:14px;
+  cursor:pointer;
+  border:none;
+  transition:opacity .2s var(--ease);
+}
+.phone-step button.primary{background:var(--gold-deep);color:#fff}
+.phone-step button.secondary{background:transparent;color:var(--text-dim);border:1.5px solid var(--border)}
+.phone-step button:hover{opacity:.88}
+
 .cta-btn.primary{background:var(--gold-deep);color:#fff}
 .cta-btn.secondary{background:transparent;color:var(--gold-deep);border:1.5px solid var(--border)}
 .cta-btn:hover{opacity:.88;transform:translateY(-1px)}
+
+/* ---- ajustes para celulares (además de las reglas fluidas de arriba,
+   que ya usan max-width:560px + 100% + padding del body) ---- */
+@media (max-width:480px){
+  body{padding:20px 12px 40px}
+  .header{margin-bottom:20px}
+  .header h1{font-size:26px}
+  .header p{font-size:13.5px}
+  .messages{padding:16px 14px;min-height:280px;max-height:58vh;max-height:58dvh}
+  .msg{max-width:88%;font-size:14px;padding:10px 13px}
+  .input-row{padding:10px 12px;gap:8px}
+  .input-row button{padding:0 16px;font-size:13.5px}
+  .result-card{padding:18px 16px}
+  .pack-card{padding:20px 18px}
+  .cta-btn{padding:12px 20px;font-size:13.5px;flex:1 1 auto;text-align:center}
+}
 </style>
 </head>
 <body>
@@ -282,12 +398,26 @@ a{color:inherit}
   <p>Una charla de unos minutos con nuestra asistente para identificar dónde estás perdiendo más tiempo, y qué pack de Talento Impulsa te conviene.</p>
 </div>
 
+<form class="lead-form" id="lead-form">
+  <label>
+    Nombre
+    <input type="text" id="lead-nombre" placeholder="¿Cómo te llamás?" autocomplete="name" required>
+  </label>
+  <label>
+    Mail
+    <input type="email" id="lead-email" placeholder="tu@mail.com" autocomplete="email" required>
+    <span class="hint">Te vamos a mandar el resultado completo a este mail.</span>
+  </label>
+  <span class="field-error" id="lead-error"></span>
+  <button type="submit" id="lead-submit">Empezar el diagnóstico</button>
+</form>
+
 <div class="progress-wrap" id="progress-wrap" style="display:none">
   <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   <div class="progress-label" id="progress-label"></div>
 </div>
 
-<div class="chat-card" id="chat-card">
+<div class="chat-card" id="chat-card" style="display:none">
   <div class="messages" id="messages"></div>
   <div class="input-row" id="input-row">
     <input type="text" id="input" placeholder="Escribí tu respuesta..." autocomplete="off">
@@ -295,16 +425,37 @@ a{color:inherit}
   </div>
 </div>
 
+<div class="phone-step" id="phone-step" style="display:none">
+  <p>Última cosa antes de mostrarte el resultado: dejanos un teléfono por si querés que te contactemos.</p>
+  <div class="phone-row">
+    <input type="tel" id="phone-input" placeholder="Ej: 11 2345 6789" autocomplete="tel">
+  </div>
+  <div class="actions">
+    <button type="button" class="secondary" id="phone-skip">Omitir</button>
+    <button type="button" class="primary" id="phone-submit">Ver mi resultado</button>
+  </div>
+</div>
+
 <div class="result" id="result" style="display:none"></div>
 
 <script>
-const API_URL = "https://pca-diagnostico-api.onrender.com/chat";
+const BASE_URL = "https://pca-diagnostico-api.onrender.com";
+const API_URL = BASE_URL + "/chat";
+const COMPLETAR_LEAD_URL = BASE_URL + "/completar-lead";
 
 // La sesión vive solo en memoria mientras dura esta visita a la página.
 // Si el visitante refresca a mitad de la entrevista, arranca de nuevo:
 // la API exige un "mensaje" no vacío para continuar una sesión existente,
 // así que no hay forma de "retomar" sin repreguntar desde el inicio.
 let sessionId = null;
+let resultadoPendiente = null; // guardamos el resultado ni bien llega, para
+                                // mostrarlo recién después del paso de teléfono
+
+const leadForm = document.getElementById("lead-form");
+const leadNombre = document.getElementById("lead-nombre");
+const leadEmail = document.getElementById("lead-email");
+const leadError = document.getElementById("lead-error");
+const leadSubmit = document.getElementById("lead-submit");
 
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("input");
@@ -315,6 +466,10 @@ const resultEl = document.getElementById("result");
 const progressWrap = document.getElementById("progress-wrap");
 const progressFill = document.getElementById("progress-fill");
 const progressLabel = document.getElementById("progress-label");
+const phoneStep = document.getElementById("phone-step");
+const phoneInput = document.getElementById("phone-input");
+const phoneSubmit = document.getElementById("phone-submit");
+const phoneSkip = document.getElementById("phone-skip");
 
 function addMessage(text, who) {
   const div = document.createElement("div");
@@ -360,12 +515,16 @@ function setBusy(busy) {
   sendBtn.disabled = busy;
 }
 
-async function callChat(mensaje) {
+async function callChat(mensaje, datosIniciales) {
   clearError();
   setBusy(true);
   showTyping();
 
   const body = { session_id: sessionId, mensaje: mensaje || null };
+  if (datosIniciales) {
+    body.nombre = datosIniciales.nombre;
+    body.email = datosIniciales.email;
+  }
 
   try {
     const resp = await fetch(API_URL, {
@@ -387,7 +546,8 @@ async function callChat(mensaje) {
     addMessage(data.mensaje, "bot");
 
     if (data.terminado) {
-      finalizarEntrevista(data.resultado);
+      resultadoPendiente = data.resultado;
+      mostrarPasoTelefono();
       return;
     }
 
@@ -406,6 +566,41 @@ async function callChat(mensaje) {
     setBusy(false);
   }
 }
+
+function mostrarPasoTelefono() {
+  inputRow.style.display = "none";
+  progressWrap.style.display = "none";
+  phoneStep.style.display = "flex";
+  phoneInput.focus();
+}
+
+async function completarLeadYMostrarResultado(telefono) {
+  phoneSubmit.disabled = true;
+  phoneSkip.disabled = true;
+  try {
+    await fetch(COMPLETAR_LEAD_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, telefono: telefono || "" }),
+    });
+  } catch (err) {
+    // No bloqueamos al visitante por esto: el resultado ya lo tenemos en
+    // el cliente. Si falla el guardado del teléfono o el mail, se puede
+    // recuperar después revisando logs — no vale la pena mostrar un error acá.
+  }
+  phoneStep.style.display = "none";
+  finalizarEntrevista(resultadoPendiente);
+}
+
+phoneSubmit.addEventListener("click", () => {
+  completarLeadYMostrarResultado(phoneInput.value.trim());
+});
+phoneSkip.addEventListener("click", () => {
+  completarLeadYMostrarResultado("");
+});
+phoneInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") phoneSubmit.click();
+});
 
 function finalizarEntrevista(resultado) {
   inputRow.style.display = "none";
@@ -464,8 +659,38 @@ inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendBtn.click();
 });
 
-// Arranque: siempre inicia una entrevista nueva al cargar la página.
-callChat(null);
+function validarEmail(email) {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+}
+
+leadForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const nombre = leadNombre.value.trim();
+  const email = leadEmail.value.trim();
+
+  leadError.style.display = "none";
+  if (!nombre) {
+    leadError.textContent = "Contanos tu nombre para arrancar.";
+    leadError.style.display = "block";
+    return;
+  }
+  if (!validarEmail(email)) {
+    leadError.textContent = "Ese mail no parece válido.";
+    leadError.style.display = "block";
+    return;
+  }
+
+  leadSubmit.disabled = true;
+  leadSubmit.textContent = "Arrancando...";
+
+  leadForm.style.display = "none";
+  chatCard.style.display = "flex";
+
+  callChat(null, { nombre, email });
+});
+
+// Arranque: se espera a que complete nombre + mail en el formulario inicial
+// (ver leadForm submit arriba) antes de llamar a callChat() por primera vez.
 </script>
 </body>
 </html>
