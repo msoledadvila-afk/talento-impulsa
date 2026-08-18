@@ -448,6 +448,11 @@ const COMPLETAR_LEAD_URL = BASE_URL + "/completar-lead";
 // la API exige un "mensaje" no vacío para continuar una sesión existente,
 // así que no hay forma de "retomar" sin repreguntar desde el inicio.
 let sessionId = null;
+let entrevistaIniciada = false; // true recién cuando llega la primera pregunta
+                                 // del bot con éxito — distinto de "sessionId
+                                 // no nulo", porque ahora guardamos el
+                                 // session_id incluso en un intento fallido
+                                 // (ver por qué en callChat)
 let resultadoPendiente = null; // guardamos el resultado ni bien llega, para
                                 // mostrarlo recién después del paso de teléfono
 let datosContacto = null;      // {nombre, email} — se guarda acá ni bien se
@@ -488,6 +493,7 @@ function addMessage(text, who) {
 }
 
 function showTyping(texto) {
+  hideTyping(); // por si quedó uno colgado de un intento anterior (evita que se acumulen)
   const div = document.createElement("div");
   div.className = "msg typing";
   div.textContent = texto || "escribiendo...";
@@ -524,7 +530,7 @@ function setBusy(busy) {
 
 async function callChat(mensaje, intento) {
   intento = intento || 1;
-  const esInicio = sessionId === null;
+  const esInicio = !entrevistaIniciada;
 
   clearError();
   setBusy(true);
@@ -544,12 +550,22 @@ async function callChat(mensaje, intento) {
     });
     const data = await resp.json();
 
+    // Capturamos el session_id aunque el pedido haya fallado: el backend ya
+    // creó la sesión y registró el lead en Sheets ANTES de intentar hablar
+    // con el modelo, así que si perdemos ese id acá, el próximo reintento
+    // (automático o manual) generaría una sesión Y un lead nuevos —
+    // duplicando la fila en Sheets en cada fallo. Guardándolo, el reintento
+    // sigue la MISMA sesión (y el backend sabe reintentar sin pedir un
+    // 'mensaje' nuevo cuando la entrevista todavía no arrancó de verdad).
+    if (data.session_id) sessionId = data.session_id;
+
     if (!resp.ok) {
-      // Solo reintentamos automáticamente el pedido INICIAL (todavía sin
-      // session_id): es el que más sufre si el servidor gratuito de Render
-      // estaba "dormido" por inactividad o Groq tuvo un hipo momentáneo.
-      // Una vez arrancada la entrevista, un error se muestra directo — no
-      // tiene sentido reintentar solo una respuesta puntual del usuario.
+      // Solo reintentamos automáticamente mientras la entrevista no arrancó
+      // de verdad (no llegó la primera pregunta del bot): es el tramo que
+      // más sufre si el servidor gratuito de Render estaba "dormido" por
+      // inactividad o Groq tuvo un hipo momentáneo. Una vez arrancada, un
+      // error se muestra directo — no tiene sentido reintentar solo una
+      // respuesta puntual del usuario.
       if (esInicio && intento < 3) {
         setTimeout(() => callChat(mensaje, intento + 1), 4000);
         return;
@@ -561,7 +577,7 @@ async function callChat(mensaje, intento) {
     }
 
     hideTyping();
-    sessionId = data.session_id;
+    entrevistaIniciada = true;
 
     addMessage(data.mensaje, "bot");
 
