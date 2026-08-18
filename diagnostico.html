@@ -450,6 +450,13 @@ const COMPLETAR_LEAD_URL = BASE_URL + "/completar-lead";
 let sessionId = null;
 let resultadoPendiente = null; // guardamos el resultado ni bien llega, para
                                 // mostrarlo recién después del paso de teléfono
+let datosContacto = null;      // {nombre, email} — se guarda acá ni bien se
+                                // manda el formulario, y se reenvía en CADA
+                                // request hasta que haya session_id. Así, si
+                                // el primer pedido falla (servidor "dormido"
+                                // por inactividad, hipo de Groq, etc.), un
+                                // reintento simplemente vuelve a mandar los
+                                // mismos datos en vez de perderlos.
 
 const leadForm = document.getElementById("lead-form");
 const leadNombre = document.getElementById("lead-nombre");
@@ -480,10 +487,10 @@ function addMessage(text, who) {
   return div;
 }
 
-function showTyping() {
+function showTyping(texto) {
   const div = document.createElement("div");
   div.className = "msg typing";
-  div.textContent = "escribiendo...";
+  div.textContent = texto || "escribiendo...";
   div.id = "typing-indicator";
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -515,15 +522,18 @@ function setBusy(busy) {
   sendBtn.disabled = busy;
 }
 
-async function callChat(mensaje, datosIniciales) {
+async function callChat(mensaje, intento) {
+  intento = intento || 1;
+  const esInicio = sessionId === null;
+
   clearError();
   setBusy(true);
-  showTyping();
+  showTyping(esInicio ? "arrancando la entrevista..." : null);
 
   const body = { session_id: sessionId, mensaje: mensaje || null };
-  if (datosIniciales) {
-    body.nombre = datosIniciales.nombre;
-    body.email = datosIniciales.email;
+  if (esInicio && datosContacto) {
+    body.nombre = datosContacto.nombre;
+    body.email = datosContacto.email;
   }
 
   try {
@@ -533,14 +543,24 @@ async function callChat(mensaje, datosIniciales) {
       body: JSON.stringify(body),
     });
     const data = await resp.json();
-    hideTyping();
 
     if (!resp.ok) {
+      // Solo reintentamos automáticamente el pedido INICIAL (todavía sin
+      // session_id): es el que más sufre si el servidor gratuito de Render
+      // estaba "dormido" por inactividad o Groq tuvo un hipo momentáneo.
+      // Una vez arrancada la entrevista, un error se muestra directo — no
+      // tiene sentido reintentar solo una respuesta puntual del usuario.
+      if (esInicio && intento < 3) {
+        setTimeout(() => callChat(mensaje, intento + 1), 4000);
+        return;
+      }
+      hideTyping();
       showError(data.error || "Ocurrió un error, intentá de nuevo en unos segundos.");
       setBusy(false);
       return;
     }
 
+    hideTyping();
     sessionId = data.session_id;
 
     addMessage(data.mensaje, "bot");
@@ -561,6 +581,10 @@ async function callChat(mensaje, datosIniciales) {
     setBusy(false);
     inputEl.focus();
   } catch (err) {
+    if (esInicio && intento < 3) {
+      setTimeout(() => callChat(mensaje, intento + 1), 4000);
+      return;
+    }
     hideTyping();
     showError("No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.");
     setBusy(false);
@@ -686,7 +710,8 @@ leadForm.addEventListener("submit", (e) => {
   leadForm.style.display = "none";
   chatCard.style.display = "flex";
 
-  callChat(null, { nombre, email });
+  datosContacto = { nombre, email };
+  callChat(null);
 });
 
 // Arranque: se espera a que complete nombre + mail en el formulario inicial
