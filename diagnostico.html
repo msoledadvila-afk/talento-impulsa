@@ -617,16 +617,25 @@ function mostrarPasoTelefono() {
 async function completarLeadYMostrarResultado(telefono) {
   phoneSubmit.disabled = true;
   phoneSkip.disabled = true;
-  try {
-    await fetch(COMPLETAR_LEAD_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, telefono: telefono || "" }),
-    });
-  } catch (err) {
-    // No bloqueamos al visitante por esto: el resultado ya lo tenemos en
-    // el cliente. Si falla el guardado del teléfono o el mail, se puede
-    // recuperar después revisando logs — no vale la pena mostrar un error acá.
+
+  // Reintenta un par de veces si el pedido falla (red inestable, Render
+  // "despertando", etc.) antes de resignarse. Es la misma idea que el
+  // reintento del arranque de la entrevista: este pedido guarda el teléfono,
+  // actualiza Sheets y manda el mail — vale la pena insistir un poco antes
+  // de dejarlo pasar en silencio.
+  for (let intento = 1; intento <= 3; intento++) {
+    try {
+      const resp = await fetch(COMPLETAR_LEAD_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, telefono: telefono || "" }),
+      });
+      if (resp.ok) break;
+      console.warn(`completar-lead: intento ${intento} respondió ${resp.status}`);
+    } catch (err) {
+      console.warn(`completar-lead: intento ${intento} falló:`, err);
+    }
+    if (intento < 3) await new Promise(r => setTimeout(r, 3000));
   }
   phoneStep.style.display = "none";
   finalizarEntrevista(resultadoPendiente);
