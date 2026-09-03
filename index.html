@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-65NX0EDEJW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-65NX0EDEJW');
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Talento Impulsa Consulting | Consultoría en IA para Pymes — Modelo PCA™</title>
@@ -168,26 +177,46 @@ img{max-width:100%;display:block}
 .nav-links{display:flex;align-items:center;gap:36px;font-size:14px;font-weight:400}
 .nav-links a:hover{color:var(--gold-deep)}
 .nav-cta{
-  padding:9px 18px;
-  background:var(--text);
-  color:var(--cream)!important;
-  border-radius:999px;
-  font-size:13px;
-  letter-spacing:.02em;
-  font-weight:500;
-}
-.nav-cta:hover{background:var(--gold-deep);transform:translateY(-1px)}
-.nav-cta-secondary{
   padding:8px 17px;
   background:transparent;
-  color:var(--gold-deep)!important;
-  border:1.5px solid var(--gold-soft);
+  color:var(--text)!important;
+  border:1.5px solid var(--border);
   border-radius:999px;
   font-size:13px;
   letter-spacing:.02em;
   font-weight:500;
 }
-.nav-cta-secondary:hover{background:var(--gold-luminous);color:var(--text)!important;transform:translateY(-1px)}
+.nav-cta:hover{background:var(--text);color:var(--cream)!important;transform:translateY(-1px)}
+.nav-cta-secondary{
+  position:relative;
+  padding:9px 20px;
+  background:var(--gold-luminous);
+  color:var(--text)!important;
+  border:none;
+  border-radius:999px;
+  font-size:13px;
+  letter-spacing:.02em;
+  font-weight:600;
+  box-shadow:0 0 0 0 rgba(212,176,98,.55);
+  animation:ctaPulse 2.6s ease-in-out infinite;
+}
+.nav-cta-secondary::before{
+  content:'';
+  display:inline-block;
+  width:6px;height:6px;
+  margin-right:8px;
+  border-radius:50%;
+  background:var(--teal);
+  vertical-align:middle;
+}
+.nav-cta-secondary:hover{background:var(--gold-soft);transform:translateY(-1px)}
+@keyframes ctaPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(212,176,98,.45)}
+  50%{box-shadow:0 0 0 8px rgba(212,176,98,0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .nav-cta-secondary{animation:none}
+}
 .menu-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px}
 .menu-toggle span{display:block;width:22px;height:1.5px;background:var(--text);margin:5px 0;transition:all .3s var(--ease)}
 
@@ -219,35 +248,13 @@ img{max-width:100%;display:block}
   overflow:hidden;
   display:flex;align-items:center;
 }
-.hero-bg{
+/* GOLDFALL — canvas propio del hero, mismo motor que el portfolio
+   pero recoloreado a la paleta dorada/teal de Talento Impulsa.
+   Reemplaza el patrón grid+partículas genérico. */
+.hero-canvas{
   position:absolute;inset:0;
-  background:
-    radial-gradient(ellipse at 20% 30%,rgba(31,74,82,.4) 0%,transparent 50%),
-    radial-gradient(ellipse at 80% 70%,rgba(212,176,98,.15) 0%,transparent 60%),
-    var(--dark-bg);
-}
-.hero-grid{
-  position:absolute;inset:0;
-  background-image:
-    linear-gradient(rgba(212,176,98,.04) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(212,176,98,.04) 1px,transparent 1px);
-  background-size:60px 60px;
-  mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);
-  -webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);
-}
-.hero-particles{position:absolute;inset:0;pointer-events:none}
-.particle{
-  position:absolute;
-  width:4px;height:4px;
-  background:var(--gold-luminous);
-  border-radius:50%;
-  opacity:.3;
-  animation:float 8s ease-in-out infinite;
-  box-shadow:0 0 20px rgba(212,176,98,.4);
-}
-@keyframes float{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-20px)}
+  width:100%;height:100%;
+  pointer-events:none;
 }
 
 .hero-inner{position:relative;z-index:1;width:100%}
@@ -955,9 +962,7 @@ img{max-width:100%;display:block}
 
 <!-- ============ HERO ============ -->
 <section class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-grid"></div>
-  <div class="hero-particles" id="particles"></div>
+  <canvas id="goldfall" class="hero-canvas" aria-hidden="true"></canvas>
   <div class="container hero-inner">
     <div class="hero-eyebrow">Modelo PCA™ · Productividad Consciente Aumentada</div>
     <h1 class="hero-title">Consultoría en IA con <em>productividad consciente</em></h1>
@@ -1453,16 +1458,122 @@ const obs = new IntersectionObserver((entries) => {
 reveals.forEach(r => obs.observe(r));
 
 // Hero particles
-const particles = document.getElementById('particles');
-for (let i = 0; i < 18; i++) {
-  const p = document.createElement('div');
-  p.className = 'particle';
-  p.style.left = Math.random() * 100 + '%';
-  p.style.top = Math.random() * 100 + '%';
-  p.style.animationDelay = Math.random() * 8 + 's';
-  p.style.animationDuration = (6 + Math.random() * 6) + 's';
-  particles.appendChild(p);
-}
+/* =============================================================
+   GOLDFALL — streaks diagonales con glow + twinkle + leve
+   reacción al mouse, contenido dentro del hero.
+   Mismo motor que el "lightfall" del portfolio, recoloreado a
+   la paleta dorada/teal de Talento Impulsa.
+   ============================================================= */
+(function initGoldfall() {
+  const canvas = document.getElementById('goldfall');
+  if (!canvas) return;
+  const hero = canvas.closest('.hero');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ctx = canvas.getContext('2d');
+  const colors = ['#9A7B3D', '#B8995A', '#D4B062', '#EFE9DB'];
+
+  let w = 0, h = 0, dpr = 1;
+  let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
+  let streaks = [];
+
+  function sizeFor(width) {
+    if (width < 640) return 7;
+    if (width < 1024) return 11;
+    return 16;
+  }
+
+  function resize() {
+    const rect = hero.getBoundingClientRect();
+    w = rect.width; h = rect.height;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    mouseX = targetX = w * 0.7;
+    mouseY = targetY = h * 0.3;
+    const count = sizeFor(w);
+    streaks = Array.from({ length: count }, () => new Streak(true));
+  }
+
+  function Streak(initial) { this.reset(initial); }
+  Streak.prototype.reset = function (initial) {
+    this.x = Math.random() * w;
+    this.y = initial ? Math.random() * h : -60;
+    this.len = 80 + Math.random() * 140;
+    this.speed = 1.3 + Math.random() * 2;
+    this.angle = 1.15;
+    this.width = 1.2 + Math.random() * 1.6;
+    this.color = colors[Math.floor(Math.random() * colors.length)];
+    this.phase = Math.random() * Math.PI * 2;
+    this.baseOpacity = 0.25 + Math.random() * 0.35;
+  };
+  Streak.prototype.update = function () {
+    const pull = (mouseX - this.x) * 0.00006;
+    this.x += Math.cos(this.angle) * this.speed + pull;
+    this.y += Math.sin(this.angle) * this.speed;
+    this.phase += 0.05;
+    if (this.y - this.len > h || this.x > w + 80) this.reset(false);
+  };
+  Streak.prototype.draw = function () {
+    const twinkle = 0.65 + 0.35 * Math.sin(this.phase);
+    const tailX = this.x - Math.cos(this.angle) * this.len;
+    const tailY = this.y - Math.sin(this.angle) * this.len;
+    const grad = ctx.createLinearGradient(this.x, this.y, tailX, tailY);
+    grad.addColorStop(0, this.color);
+    grad.addColorStop(1, 'transparent');
+    ctx.save();
+    ctx.globalAlpha = this.baseOpacity * twinkle;
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = this.width;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(tailX, tailY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = Math.min(1, this.baseOpacity * twinkle * 1.5);
+    ctx.arc(this.x, this.y, this.width * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  function frame() {
+    mouseX += (targetX - mouseX) * 0.04;
+    mouseY += (targetY - mouseY) * 0.04;
+    ctx.clearRect(0, 0, w, h);
+    // glow teal (esquina superior izquierda) + glow dorado (inferior derecha)
+    // — misma composición que el hero original, ahora integrada al canvas
+    const glowTeal = ctx.createRadialGradient(w * 0.2, h * 0.3, 0, w * 0.2, h * 0.3, w * 0.5);
+    glowTeal.addColorStop(0, 'rgba(31,74,82,0.35)');
+    glowTeal.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowTeal;
+    ctx.fillRect(0, 0, w, h);
+    const glowGold = ctx.createRadialGradient(w * 0.8, h * 0.7, 0, w * 0.8, h * 0.7, w * 0.45);
+    glowGold.addColorStop(0, 'rgba(212,176,98,0.14)');
+    glowGold.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowGold;
+    ctx.fillRect(0, 0, w, h);
+    streaks.forEach(s => { s.update(); s.draw(); });
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('pointermove', (e) => {
+    const rect = hero.getBoundingClientRect();
+    targetX = e.clientX - rect.left;
+    targetY = e.clientY - rect.top;
+  });
+
+  resize();
+  if (!reduceMotion) {
+    requestAnimationFrame(frame);
+  } else {
+    ctx.clearRect(0, 0, w, h);
+    streaks.forEach(s => s.draw());
+  }
+})();
 </script>
 
 </body>
