@@ -116,6 +116,8 @@ a{color:inherit}
   flex:1;
   min-height:320px;
   max-height:52vh;
+  max-height:52dvh; /* dvh se achica solo cuando aparece el teclado en mobile;
+                        vh de arriba queda como fallback para navegadores viejos */
   overflow-y:auto;
   padding:22px 20px;
   display:flex;
@@ -711,6 +713,26 @@ sendBtn.addEventListener("click", () => {
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendBtn.click();
 });
+
+// Cuando el teclado del celular se abre, muchos navegadores (sobre todo
+// in-app browsers como el de Instagram/Facebook) NO achican el alto visible
+// de la página de forma que el CSS pueda reaccionar solo (ni siquiera con
+// dvh). La VisualViewport API sí nos avisa el alto real disponible en ese
+// momento, así que recalculamos el límite de altura de los mensajes a mano
+// y hacemos scroll para que la última pregunta quede visible arriba del
+// teclado, en vez de tapada.
+if (window.visualViewport) {
+  const ajustarAlTeclado = () => {
+    const alturaDisponible = window.visualViewport.height;
+    const espacioReservado = 210; // header + padding + fila de input, aprox.
+    const alturaMensajes = Math.max(160, alturaDisponible - espacioReservado);
+    messagesEl.style.maxHeight = alturaMensajes + "px";
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+  window.visualViewport.addEventListener("resize", ajustarAlTeclado);
+  inputEl.addEventListener("focus", () => setTimeout(ajustarAlTeclado, 300));
+}
+
 
 function validarEmail(email) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
