@@ -614,15 +614,20 @@ function mostrarPasoTelefono() {
   phoneInput.focus();
 }
 
-async function completarLeadYMostrarResultado(telefono) {
-  phoneSubmit.disabled = true;
-  phoneSkip.disabled = true;
+function completarLeadYMostrarResultado(telefono) {
+  // El cliente ve su resultado YA, sin depender de que el guardado en Sheets
+  // ni el mail salgan bien — eso pasa en segundo plano. Antes esta función
+  // esperaba (con reintentos) a que /completar-lead respondiera para recién
+  // ahí mostrar el resultado: si esa llamada se colgaba (ej: el envío de
+  // mail por SMTP tardando o fallando en conectar), el cliente se quedaba
+  // con la pantalla trabada sin ver nada, aunque el diagnóstico ya estaba
+  // listo del lado del cliente hacía rato.
+  phoneStep.style.display = "none";
+  finalizarEntrevista(resultadoPendiente);
+  completarLeadEnSegundoPlano(telefono);
+}
 
-  // Reintenta un par de veces si el pedido falla (red inestable, Render
-  // "despertando", etc.) antes de resignarse. Es la misma idea que el
-  // reintento del arranque de la entrevista: este pedido guarda el teléfono,
-  // actualiza Sheets y manda el mail — vale la pena insistir un poco antes
-  // de dejarlo pasar en silencio.
+async function completarLeadEnSegundoPlano(telefono) {
   for (let intento = 1; intento <= 3; intento++) {
     try {
       const resp = await fetch(COMPLETAR_LEAD_URL, {
@@ -630,15 +635,14 @@ async function completarLeadYMostrarResultado(telefono) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId, telefono: telefono || "" }),
       });
-      if (resp.ok) break;
+      if (resp.ok) return;
       console.warn(`completar-lead: intento ${intento} respondió ${resp.status}`);
     } catch (err) {
       console.warn(`completar-lead: intento ${intento} falló:`, err);
     }
     if (intento < 3) await new Promise(r => setTimeout(r, 3000));
   }
-  phoneStep.style.display = "none";
-  finalizarEntrevista(resultadoPendiente);
+  console.error("completar-lead: se agotaron los 3 intentos sin éxito.");
 }
 
 phoneSubmit.addEventListener("click", () => {
