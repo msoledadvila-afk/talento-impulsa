@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://talentoimpulsa.netlify.app/sitemap.xml
+Sitemap: https://talentoimpulsa.com.ar/sitemap.xml
