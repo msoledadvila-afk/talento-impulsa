@@ -205,6 +205,19 @@ a{color:inherit}
   text-align:center;
   border-top:1px solid #E8C7C7;
 }
+.error-banner button{
+  margin-left:8px;
+  padding:5px 14px;
+  border:1.5px solid #9C3B3B;
+  border-radius:8px;
+  background:transparent;
+  color:#9C3B3B;
+  font-family:var(--font-body);
+  font-weight:600;
+  font-size:13px;
+  cursor:pointer;
+}
+.error-banner button:hover{opacity:.8}
 
 /* ---- resultado final ---- */
 .result{
@@ -445,6 +458,47 @@ const BASE_URL = "https://pca-diagnostico-api.onrender.com";
 const API_URL = BASE_URL + "/chat";
 const COMPLETAR_LEAD_URL = BASE_URL + "/completar-lead";
 
+// ---- Arranque en frío del servidor ----------------------------------------
+// El plan gratuito de Render "duerme" el servidor tras un rato sin tráfico y
+// tarda 50 s o más en despertar. Dos defensas:
+//  1) Apenas carga la página, un ping silencioso a /health lo va despertando
+//     mientras el visitante todavía lee y completa nombre y mail.
+//  2) Si igual el primer pedido a /chat falla, se reintenta con espera
+//     creciente: 3+5+8+10+10+10+10+10 = 66 s de espera (más lo que tarde cada
+//     intento), suficiente para cubrir un arranque en frío completo.
+const REINTENTOS_INICIO_MS = [3000, 5000, 8000, 10000, 10000, 10000, 10000, 10000];
+const MSG_PREPARANDO = "Estoy preparando el diagnóstico, puede tardar hasta un minuto…";
+
+(function despertarServidor() {
+  try {
+    // no-cors: no nos importa la respuesta (solo que el servidor reciba el
+    // pedido y arranque), y así no aparece ningún error de CORS en consola.
+    fetch(BASE_URL + "/health", { method: "GET", mode: "no-cors", cache: "no-store" })
+      .catch(() => {});
+  } catch (e) {
+    /* silencioso a propósito: esto nunca debe bloquear ni mostrar errores */
+  }
+})();
+
+// ---- UTM del anuncio --------------------------------------------------------
+// Se leen de la URL una sola vez al cargar y se mandan en el primer pedido a
+// /chat. Si no vienen (visita orgánica o directa), el objeto queda vacío y
+// el backend deja esas columnas en blanco.
+const UTM_CLAVES = ["utm_source", "utm_medium", "utm_campaign", "utm_content"];
+const utmParams = (function leerUtm() {
+  const salida = {};
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    UTM_CLAVES.forEach((clave) => {
+      const valor = (qs.get(clave) || "").trim();
+      if (valor) salida[clave] = valor.slice(0, 200);
+    });
+  } catch (e) {
+    /* si el navegador no soporta URLSearchParams, seguimos sin UTM */
+  }
+  return salida;
+})();
+
 // La sesión vive solo en memoria mientras dura esta visita a la página.
 // Si el visitante refresca a mitad de la entrevista, arranca de nuevo:
 // la API exige un "mensaje" no vacío para continuar una sesión existente,
@@ -536,12 +590,47 @@ async function callChat(mensaje, intento) {
 
   clearError();
   setBusy(true);
-  showTyping(esInicio ? "arrancando la entrevista..." : null);
+  showTyping(esInicio ? (intento === 1 ? "arrancando la entrevista..." : MSG_PREPARANDO) : null);
+
+  // Si el primer intento tarda más de unos segundos (servidor dormido que
+  // está despertando), cambiamos el texto por un aviso amable. Se cancela en
+  // el finally de abajo apenas este intento termina, sea como sea.
+  const avisoTimer = (esInicio && intento === 1)
+    ? setTimeout(() => showTyping(MSG_PREPARANDO), 4000)
+    : null;
 
   const body = { session_id: sessionId, mensaje: mensaje || null };
-  if (esInicio && datosContacto) {
-    body.nombre = datosContacto.nombre;
-    body.email = datosContacto.email;
+  if (esInicio) {
+    if (datosContacto) {
+      body.nombre = datosContacto.nombre;
+      body.email = datosContacto.email;
+    }
+    // UTM del anuncio: viajan solo mientras la entrevista no arrancó (el
+    // backend las usa únicamente al crear la sesión y las ignora después).
+    body.utm = utmParams;
+  }
+
+  // Reintento con espera creciente. SOLO mientras la entrevista no arrancó
+  // de verdad: es el tramo que sufre el arranque en frío del servidor
+  // gratuito de Render (50 s o más para despertar). Una vez que arrancó, un
+  // error se muestra directo — no tiene sentido reintentar solo una
+  // respuesta puntual del usuario (podría duplicar el turno).
+  function programarReintento() {
+    if (!esInicio || intento > REINTENTOS_INICIO_MS.length) return false;
+    showTyping(MSG_PREPARANDO);
+    setTimeout(() => callChat(mensaje, intento + 1), REINTENTOS_INICIO_MS[intento - 1]);
+    return true;
+  }
+
+  // Falla definitiva (se agotaron los reintentos o no corresponde reintentar).
+  function falloDefinitivo(texto) {
+    hideTyping();
+    if (esInicio) {
+      mostrarErrorInicio(texto);
+    } else {
+      showError(texto);
+      setBusy(false);
+    }
   }
 
   try {
@@ -550,7 +639,17 @@ async function callChat(mensaje, intento) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await resp.json();
+
+    // Leemos como texto y parseamos a mano: si Render devuelve una página
+    // HTML (error 502/503 o "servidor despertando"), resp.json() tiraría una
+    // excepción genérica. Así lo detectamos y lo tratamos como reintentable.
+    let data = null;
+    try {
+      data = JSON.parse(await resp.text());
+    } catch (e) {
+      data = null;
+    }
+    const esJson = data !== null && typeof data === "object";
 
     // Capturamos el session_id aunque el pedido haya fallado: el backend ya
     // creó la sesión y registró el lead en Sheets ANTES de intentar hablar
@@ -559,22 +658,31 @@ async function callChat(mensaje, intento) {
     // duplicando la fila en Sheets en cada fallo. Guardándolo, el reintento
     // sigue la MISMA sesión (y el backend sabe reintentar sin pedir un
     // 'mensaje' nuevo cuando la entrevista todavía no arrancó de verdad).
-    if (data.session_id) sessionId = data.session_id;
+    if (esJson && data.session_id) sessionId = data.session_id;
+
+    // Respuesta que no es JSON, o un 200 sin el campo 'mensaje' que esperamos
+    // (típico de la página intermedia de Render): no es una caída definitiva.
+    const respuestaInvalida = !esJson || (resp.ok && typeof data.mensaje !== "string");
+    if (respuestaInvalida) {
+      if (programarReintento()) return;
+      falloDefinitivo(esInicio
+        ? "El servidor está tardando más de lo normal en responder."
+        : "El servidor tardó en responder. Probá enviar tu respuesta de nuevo en unos segundos.");
+      return;
+    }
 
     if (!resp.ok) {
-      // Solo reintentamos automáticamente mientras la entrevista no arrancó
-      // de verdad (no llegó la primera pregunta del bot): es el tramo que
-      // más sufre si el servidor gratuito de Render estaba "dormido" por
-      // inactividad o Groq tuvo un hipo momentáneo. Una vez arrancada, un
-      // error se muestra directo — no tiene sentido reintentar solo una
-      // respuesta puntual del usuario.
-      if (esInicio && intento < 3) {
-        setTimeout(() => callChat(mensaje, intento + 1), 4000);
-        return;
-      }
-      hideTyping();
-      showError(data.error || "Ocurrió un error, intentá de nuevo en unos segundos.");
-      setBusy(false);
+      // 404 al inicio: el servidor se reinició y perdió la sesión (el estado
+      // vive en un disco efímero). Empezamos una sesión nueva reenviando
+      // nombre y mail, que siguen guardados en datosContacto.
+      if (esInicio && resp.status === 404) sessionId = null;
+
+      // Errores 4xx "de verdad" (ej: 400 por datos inválidos) no se arreglan
+      // esperando; los 5xx, el 404 de sesión perdida, 408 y 429 sí.
+      const reintentable = resp.status >= 500 || [404, 408, 429].includes(resp.status);
+      if (reintentable && programarReintento()) return;
+
+      falloDefinitivo(data.error || "Ocurrió un error, intentá de nuevo en unos segundos.");
       return;
     }
 
@@ -599,15 +707,36 @@ async function callChat(mensaje, intento) {
     setBusy(false);
     inputEl.focus();
   } catch (err) {
-    if (esInicio && intento < 3) {
-      setTimeout(() => callChat(mensaje, intento + 1), 4000);
-      return;
-    }
-    hideTyping();
-    showError("No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.");
-    setBusy(false);
+    // Error de red (incluye el caso en que Render responde un 502/503 sin
+    // headers CORS y el navegador lo bloquea antes de que lo veamos).
+    if (programarReintento()) return;
+    falloDefinitivo("No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.");
+  } finally {
+    if (avisoTimer) clearTimeout(avisoTimer);
   }
 }
+
+// La entrevista no llegó a arrancar y se agotaron los reintentos: dejamos el
+// campo de texto bloqueado (para que no se mande una "respuesta" a una
+// pregunta que nunca se hizo) y ofrecemos un botón para volver a probar.
+// Sin onclick inline: el botón lleva data-action y lo atiende el listener
+// único de más abajo (event delegation).
+function mostrarErrorInicio(texto) {
+  showError(texto + " ");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.dataset.action = "reintentar-inicio";
+  btn.textContent = "Reintentar";
+  document.getElementById("error-banner").appendChild(btn);
+}
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  if (el.dataset.action === "reintentar-inicio") {
+    callChat(null, 1);
+  }
+});
 
 function mostrarPasoTelefono() {
   inputRow.style.display = "none";
