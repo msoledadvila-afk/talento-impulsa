@@ -227,6 +227,18 @@ a{color:inherit;text-decoration:none}
   max-width:60ch;
 }
 
+
+/* ============ SAGAS ============ */
+.saga-section + .saga-section{margin-top:88px}
+.saga-head{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.saga-kicker{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-deep);font-weight:600}
+.saga-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:600;letter-spacing:-.01em;line-height:1.2}
+.saga-title em{font-family:var(--font-italic);font-style:italic;color:var(--gold-deep)}
+.blog-card.is-upcoming{background:transparent;border-style:dashed;box-shadow:none;cursor:default}
+.blog-card.is-upcoming:hover{transform:none;box-shadow:none;border-color:var(--border)}
+.blog-card.is-upcoming h2{color:var(--text-dim)}
+.blog-card.is-upcoming .blog-card-link{color:var(--text-dim)}
+
 /* ============ FOOTER (idéntico al sitio principal) ============ */
 .footer{background:var(--dark-bg);color:rgba(239,233,219,.7);padding:72px 0 32px}
 .footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:56px;padding-bottom:48px;border-bottom:1px solid rgba(239,233,219,.1)}
@@ -275,7 +287,50 @@ a{color:inherit;text-decoration:none}
 
 <main class="blog-list">
   <div class="container">
-    <div class="blog-grid">
+
+    <section class="saga-section" aria-labelledby="saga-2">
+      <div class="saga-head">
+        <span class="saga-kicker">Saga II</span>
+        <h2 class="saga-title" id="saga-2">El Modelo PCA™ <em>en uso</em></h2>
+      </div>
+      <div class="blog-grid">
+
+      <a href="/blog/prompt-studio-pca-criterio-compartido.html" class="blog-card">
+        <div class="blog-card-tag">Saga II · i. Delegación Inteligente</div>
+        <div class="blog-card-body">
+          <h2>Tu equipo no necesita aprender a escribir prompts. Necesita un criterio compartido.</h2>
+          <p>64 prompts en 8 categorías, armados con el Protocolo C.R.E.F.™ y con el criterio explicado, para que todo el equipo trabaje sobre la misma base.</p>
+          <span class="blog-card-link">Leer artículo <span class="arrow">→</span></span>
+        </div>
+      </a>
+
+      <div class="blog-card is-upcoming" aria-label="Próximamente: Antes de diseñar sistemas para otros, uso uno.">
+        <div class="blog-card-tag">Saga II · ii. Sistema</div>
+        <div class="blog-card-body">
+          <h2>Antes de diseñar sistemas para otros, uso uno.</h2>
+          <p>El Dashboard Operativo con el que opero Talento Impulsa: horas, proyectos, clientes, pipeline y contenido en un solo lugar.</p>
+          <span class="blog-card-link">Próximamente · vie 16/10</span>
+        </div>
+      </div>
+
+      <div class="blog-card is-upcoming" aria-label="Próximamente: Medir antes de cambiar. Acompañar después.">
+        <div class="blog-card-tag">Saga II · iii. Liderazgo Consciente</div>
+        <div class="blog-card-body">
+          <h2>Medir antes de cambiar. Acompañar después.</h2>
+          <p>Cómo la Matriz de Auditoría PCA™ toma la foto inicial y el Seguimiento PCA™ comprueba si el cambio se sostiene.</p>
+          <span class="blog-card-link">Próximamente · lun 19/10</span>
+        </div>
+      </div>
+
+      </div>
+    </section>
+
+    <section class="saga-section" aria-labelledby="saga-1">
+      <div class="saga-head">
+        <span class="saga-kicker">Saga I</span>
+        <h2 class="saga-title" id="saga-1">Los <em>fundamentos</em></h2>
+      </div>
+      <div class="blog-grid">
 
       <a href="/blog/metodo-pca-ia-no-alcanza.html" class="blog-card">
         <div class="blog-card-tag">Modelo PCA™</div>
@@ -304,7 +359,8 @@ a{color:inherit;text-decoration:none}
         </div>
       </a>
 
-    </div>
+      </div>
+    </section>
 
     <p class="blog-empty-note">Sumamos artículos nuevos cada pocas semanas sobre productividad, IA aplicada y liderazgo consciente. Volvé pronto.</p>
   </div>

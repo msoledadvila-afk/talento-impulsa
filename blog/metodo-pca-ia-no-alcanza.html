@@ -240,6 +240,14 @@ a{color:inherit}
 @media(max-width:600px){
   .cta-box{flex-direction:column;align-items:flex-start}
 }
+
+/* ============ SAGA · SEGUÍ LEYENDO ============ */
+.saga-next{display:block;margin:56px 0 0;padding:26px 30px;background:var(--warm);border:1px solid var(--border);border-radius:12px;text-decoration:none;transition:border-color .3s var(--ease),transform .3s var(--ease)}
+a.saga-next:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
+.saga-next-label{display:block;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-deep);font-weight:600;margin-bottom:8px}
+.saga-next-title{display:block;font-family:var(--font-italic);font-style:italic;font-size:23px;line-height:1.35;color:var(--text)}
+.saga-next.is-pending{background:transparent;border-style:dashed}
+.saga-next.is-pending .saga-next-title{color:var(--text-dim)}
 </style>
 </head>
 <body>
@@ -323,6 +331,11 @@ a{color:inherit}
       <p>Hay una diferencia de fondo entre "hacer más rápido" y "hacer con conciencia". La primera es la promesa de casi todas las herramientas de IA del mercado. La segunda es la que sostenemos en Talento Impulsa: recuperar horas tiene sentido solo si esas horas se reinvierten en lo que realmente requiere criterio humano — pensar estrategia, cuidar vínculos, tomar decisiones difíciles — y no simplemente en llenar la agenda con más tareas.</p>
 
       <p>Ese es, en definitiva, el punto de partida del Modelo PCA™: la IA como motor, vos siempre como piloto.</p>
+
+      <a href="/blog/prompt-studio-pca-criterio-compartido.html" class="saga-next">
+        <span class="saga-next-label">Seguí con Saga II · El Modelo PCA™ en uso</span>
+        <span class="saga-next-title">Tu equipo no necesita aprender a escribir prompts →</span>
+      </a>
 
       <div class="article-footer-nav">
         <a href="/blog/">← Volver a todos los artículos</a>
