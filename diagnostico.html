@@ -539,10 +539,40 @@ const phoneInput = document.getElementById("phone-input");
 const phoneSubmit = document.getElementById("phone-submit");
 const phoneSkip = document.getElementById("phone-skip");
 
+// Saca cualquier resto de etiqueta interna (<puntaje ...>, <ppuntaje ...>,
+// </puntaje>) que pudiera llegar del modelo. El backend ya limpia, esto es
+// una segunda red por si acaso.
+function limpiarTextoBot(text) {
+  return String(text || "")
+    .replace(/<\/?\s*[A-Za-z][^>\n]{0,80}>?/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+// **texto** -> negrita. Se arma con nodos (createElement + textContent),
+// nunca con innerHTML, así ningún texto del modelo se interpreta como HTML.
+function pintarConNegritas(div, text) {
+  const partes = text.split(/\*\*(.+?)\*\*/g);
+  partes.forEach((parte, i) => {
+    if (!parte) return;
+    if (i % 2 === 1) {
+      const strong = document.createElement("strong");
+      strong.textContent = parte;
+      div.appendChild(strong);
+    } else {
+      div.appendChild(document.createTextNode(parte.replace(/\*\*/g, "")));
+    }
+  });
+}
+
 function addMessage(text, who) {
   const div = document.createElement("div");
   div.className = "msg " + who;
-  div.textContent = text;
+  if (who === "bot") {
+    pintarConNegritas(div, limpiarTextoBot(text) || "¿Me repetís tu respuesta, por favor?");
+  } else {
+    div.textContent = text;
+  }
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return div;
@@ -630,6 +660,14 @@ async function callChat(mensaje, intento) {
     } else {
       showError(texto);
       setBusy(false);
+      // Devolvemos la respuesta al campo de texto (y sacamos su burbuja) para
+      // que el cliente solo tenga que tocar "Enviar" otra vez.
+      if (mensaje) {
+        const burbujas = messagesEl.querySelectorAll(".msg.user");
+        const ultima = burbujas[burbujas.length - 1];
+        if (ultima && ultima.textContent === mensaje) ultima.remove();
+        inputEl.value = mensaje;
+      }
     }
   }
 
@@ -681,6 +719,16 @@ async function callChat(mensaje, intento) {
       // esperando; los 5xx, el 404 de sesión perdida, 408 y 429 sí.
       const reintentable = resp.status >= 500 || [404, 408, 429].includes(resp.status);
       if (reintentable && programarReintento()) return;
+
+      // Ya en la entrevista: un 502 significa que el backend NO guardó nada de
+      // este turno (no pudo hablar con el modelo), así que reenviar la misma
+      // respuesta es seguro y no duplica nada. Lo hacemos solos, una vez, para
+      // que el cliente no tenga que volver a escribir.
+      if (!esInicio && resp.status === 502 && intento === 1) {
+        showTyping();
+        setTimeout(() => callChat(mensaje, 2), 3000);
+        return;
+      }
 
       falloDefinitivo(data.error || "Ocurrió un error, intentá de nuevo en unos segundos.");
       return;
