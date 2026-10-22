@@ -294,6 +294,24 @@ a{color:inherit}
   text-decoration:none;
   transition:opacity .2s var(--ease), transform .2s var(--ease);
 }
+/* aviso de envío del mail, arriba del resultado */
+.mail-notice{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  background:var(--cream);
+  border:1px solid var(--border);
+  border-left:3px solid var(--gold);
+  border-radius:14px;
+  padding:14px 18px;
+  font-size:13.5px;
+  line-height:1.55;
+  color:var(--text);
+}
+.mail-notice .icon{font-size:18px;line-height:1.3}
+.mail-notice strong{overflow-wrap:anywhere}
+.mail-notice .sub{margin-top:4px;font-size:13px;color:var(--text-dim)}
+
 /* ---- formulario previo (nombre + mail) y paso de teléfono final ---- */
 .lead-form{
   width:100%;
@@ -840,6 +858,28 @@ function finalizarEntrevista(resultado) {
 
   resultEl.style.display = "flex";
   resultEl.innerHTML = "";
+
+  // Aviso de envío del mail. En Outlook/Hotmail el resultado puede caer en
+  // Correo no deseado. Se arma con textContent: el mail lo escribió el visitante.
+  if (datosContacto && datosContacto.email) {
+    const aviso = document.createElement("div");
+    aviso.className = "mail-notice";
+    const icono = document.createElement("div");
+    icono.className = "icon";
+    icono.textContent = "✉️";
+    const cuerpo = document.createElement("div");
+    const linea = document.createElement("div");
+    linea.append("Te estamos enviando el resultado completo a ");
+    const mail = document.createElement("strong");
+    mail.textContent = datosContacto.email;
+    linea.append(mail, ".");
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = "Si no ves el mail en unos minutos, revisá la carpeta de Correo no deseado o Spam.";
+    cuerpo.append(linea, sub);
+    aviso.append(icono, cuerpo);
+    resultEl.appendChild(aviso);
+  }
 
   // Cuellos de botella
   const bottlenecksCard = document.createElement("div");
