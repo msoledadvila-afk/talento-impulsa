@@ -905,7 +905,7 @@ function finalizarEntrevista(resultado) {
   packCard.innerHTML = `
     <div class="tag">Recomendado para vos</div>
     <h2>${pack.emoji} ${pack.nombre}</h2>
-    <p>${resultado.texto_recomendacion.replace(/\n/g, "<br><br>")}</p>
+    <p>${resultado.texto_recomendacion.replace(/\n+/g, "<br><br>")}</p>
   `;
   resultEl.appendChild(packCard);
 
