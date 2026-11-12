@@ -1,0 +1,19 @@
+{
+  "name": "Talento Impulsa Consulting",
+  "short_name": "Talento Impulsa",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#9A7B3D",
+  "background_color": "#EFE9DB",
+  "display": "browser"
+}
